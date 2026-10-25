@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Leverage</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Archivo:wght@400;500;600;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one dossier per target — goal band, observations + questions, approach picker, debrief */
+:root{
+  --bg:#e6e4ea; --surface:#f6f5f8; --ink:#16141c; --muted:#5f5b6b; --line:#cfcbd8;
+  --accent:#6b3fa0; --good:#1d7a52; --bad:#b3263a; --note:#a8790f;
+  --f-display:"Special Elite", "Courier New", ui-monospace, monospace;
+  --f-body:"Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#100e15; --surface:#18161f; --ink:#ebe8f2; --muted:#958fa6; --line:#2b2836;
+  --accent:#b08ae6; --good:#4fcf8a; --bad:#f0566c; --note:#e3b341; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#100e15; --surface:#18161f; --ink:#ebe8f2; --muted:#958fa6; --line:#2b2836;
+  --accent:#b08ae6; --good:#4fcf8a; --bad:#f0566c; --note:#e3b341; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px}
+.wrap{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.tag{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(2.2rem,7vw,3.6rem);line-height:1;margin:4px 0 0}
+h1 span{color:var(--accent)}
+.lede{margin:8px 0 0;color:var(--muted);max-width:62ch}
+.bar{display:grid;grid-template-columns:repeat(3,1fr);border-block:1px solid var(--line)}
+.bar div{padding:10px 0;display:flex;flex-direction:column;gap:2px}
+.bar div+div{border-left:1px solid var(--line);padding-left:14px}
+.bar b{font-family:var(--f-display);font-weight:400;font-size:1.5rem;font-variant-numeric:tabular-nums;line-height:1.2}
+.bar small{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pips{display:flex;gap:6px;height:1.8rem;align-items:center}
+.pips i{width:16px;height:16px;border-radius:50%;border:2px solid var(--bad);display:block}
+.pips i.on{background:var(--bad)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:clamp(16px,3vw,24px);display:flex;flex-direction:column;gap:18px}
+.who{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.who h2{font-family:var(--f-display);font-weight:400;font-size:clamp(1.6rem,5vw,2.2rem);margin:0;line-height:1.1}
+.who .role{color:var(--muted)}
+.goal{border-left:3px solid var(--accent);padding:4px 0 4px 12px}
+.goal p{margin:2px 0 0;font-weight:600}
+h3{font-family:var(--f-mono);font-weight:500;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;margin:0 0 8px;color:var(--ink)}
+.obs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.obs li{padding-left:22px;position:relative}
+.obs li::before{content:"◉";position:absolute;left:0;color:var(--note);font-size:.8rem;top:.2em}
+.qs{display:flex;flex-wrap:wrap;gap:8px}
+.q{font:500 .9rem var(--f-body);text-align:left;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:9px 12px;cursor:pointer}
+.q:hover:not(:disabled){border-color:var(--accent)}
+.q:disabled{opacity:.4;cursor:not-allowed}
+.q:focus-visible,.ap:focus-visible,.btn:focus-visible{outline:3px solid var(--note);outline-offset:2px}
+.qhint{font-size:.85rem;color:var(--muted);margin:8px 0 0}
+.talk{display:flex;flex-direction:column;gap:10px}
+.line{display:flex;flex-direction:column;gap:2px}
+.line .you{font-size:.85rem;color:var(--muted)}
+.line .them{font-family:var(--f-display);font-size:1.08rem}
+.aps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.ap{font:inherit;color:var(--ink);text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.ap:hover:not(:disabled){border-color:var(--accent)}
+.ap b{font-weight:700}
+.ap span{font-size:.85rem;color:var(--muted)}
+.ap:disabled{cursor:default}
+.ap.right{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
+.ap.wrong{border-color:var(--bad);box-shadow:inset 0 0 0 1px var(--bad)}
+.ap:disabled:not(.right):not(.wrong){opacity:.45}
+.debrief{border-top:1px dashed var(--line);padding-top:16px;display:flex;flex-direction:column;gap:8px}
+.debrief .head{font-family:var(--f-display);font-size:1.4rem}
+.debrief .head.win{color:var(--good)} .debrief .head.lose{color:var(--bad)}
+.debrief p{margin:0}
+.liar{display:inline-block;font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--bad);border:1px solid var(--bad);border-radius:999px;padding:2px 9px;margin-right:6px}
+.btn{font:700 .95rem var(--f-body);border:0;border-radius:10px;padding:12px 22px;cursor:pointer;background:var(--ink);color:var(--bg);align-self:flex-start}
+.how{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;font-size:.92rem;color:var(--muted)}
+.how p{margin:0}
+.end h2{font-family:var(--f-display);font-weight:400;font-size:clamp(1.8rem,6vw,2.6rem);margin:0}
+.end p{margin:0;color:var(--muted);max-width:60ch}
+.end .big{font-family:var(--f-display);font-size:3rem;color:var(--accent);line-height:1}
+@media (max-width:640px){.how{grid-template-columns:1fr;gap:14px}}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+<style>
+[hidden]{display:none!important}
+.bar .pips{flex-direction:row;padding:0;border:0}
+.bar .pips i{flex:none}
+.rules{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.rules summary{cursor:pointer;padding:14px 16px;font:700 1rem var(--f-body);list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.rules summary::-webkit-details-marker{display:none}
+.rules summary::after{content:"Show";font:500 .72rem var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.rules[open] summary::after{content:"Hide"}
+.rules summary:focus-visible{outline:3px solid var(--note);outline-offset:2px;border-radius:12px}
+.rbody{padding:0 16px 18px;display:flex;flex-direction:column;gap:10px;font-size:.95rem}
+.rbody p,.rbody ol,.rbody ul{margin:0}
+.rbody ol,.rbody ul{padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.rbody h3{margin:8px 0 0}
+.tw{overflow-x:auto}
+.tw table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:420px}
+.tw th,.tw td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tw th{font:500 .66rem var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tw tr:last-child td{border-bottom:0}
+.tabs{display:flex;gap:4px;border:1px solid var(--line);border-radius:999px;padding:4px;background:var(--surface);align-self:flex-start;flex-wrap:wrap}
+.tabs button{font:600 .9rem var(--f-body);border:0;background:transparent;color:var(--muted);padding:8px 16px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.tabs button:focus-visible,.opt:focus-visible,.chip:focus-visible{outline:3px solid var(--note);outline-offset:2px}
+.intel{border:1px dashed var(--note);border-radius:10px;padding:10px 14px;font-size:.95rem}
+.intel b{color:var(--note);font-family:var(--f-mono);font-weight:500;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:2px}
+.intel.fail{border-color:var(--line);color:var(--muted)}
+.step{color:var(--note)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.stats div{padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stats div+div{border-left:1px solid var(--line)}
+.stats b{font-family:var(--f-display);font-weight:400;font-size:1.4rem;font-variant-numeric:tabular-nums}
+.stats small{font-family:var(--f-mono);font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.statshead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
+.linkbtn{font:500 .8rem var(--f-body);background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:600 .9rem var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:8px 14px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.field{display:flex;flex-direction:column;gap:6px}
+.story{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.story div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.story small{font-family:var(--f-mono);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block}
+.story b{font-family:var(--f-display);font-weight:400;font-size:1.15rem}
+.qbox{font-family:var(--f-display);font-size:clamp(1.25rem,4vw,1.6rem);line-height:1.3}
+.timer{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.timer i{display:block;height:100%;background:var(--accent);width:100%}
+.timer.late i{background:var(--bad)}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{font:500 1rem var(--f-body);text-align:left;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt:disabled{cursor:default;opacity:.55}
+.opt.chosen.ok{opacity:1;border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
+.opt.chosen.bad{opacity:1;border-color:var(--bad);box-shadow:inset 0 0 0 1px var(--bad)}
+.react{font-family:var(--f-display);font-size:1.1rem;min-height:1.6em;margin:0}
+.react.bad{color:var(--bad)} .react.ok{color:var(--muted)}
+.sus{display:flex;gap:6px;align-items:center}
+.sus i{width:16px;height:16px;border-radius:3px;border:2px solid var(--bad);display:block}
+.sus i.on{background:var(--bad)}
+.review{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:.92rem}
+.review li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;border-bottom:1px solid var(--line);padding-bottom:8px}
+.review li:last-child{border-bottom:0}
+.review .res{font-family:var(--f-mono);font-size:.7rem;padding:2px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.review .res.ok{color:var(--good)} .review .res.bad{color:var(--bad)} .review .res.meh{color:var(--note)}
+.review span.d{color:var(--muted);display:block}
+@media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.stats div:nth-child(3){border-left:0}.stats div:nth-child(n+3){border-top:1px solid var(--line)}.story{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.timer i{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="tag">People-reading game · motives and deception</p>
+    <h1>Lever<span>age</span></h1>
+    <p class="lede" id="lede">Every person wants something. Read the clues, figure out what drives them, then use it to get what you need. Anyone might lie to you about what they want.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Game mode">
+    <button type="button" role="tab" id="tabRead" aria-selected="true">Read people</button>
+    <button type="button" role="tab" id="tabCover" aria-selected="false">Cover story</button>
+  </div>
+
+  <div class="bar" id="readBar">
+    <div><small>Target</small><b id="caseNo">1 / 8</b></div>
+    <div><small>Score</small><b id="score">0</b></div>
+    <div><small>Blown covers</small><div class="pips" id="pips"></div></div>
+  </div>
+
+  <details class="rules" id="howRead">
+    <summary>How to play: Read people</summary>
+    <div class="rbody">
+      <p><strong>Goal:</strong> Get 8 people to give you what you need. Each correct read scores points, up to 800 total.</p>
+      <h3>Each target</h3>
+      <ol>
+        <li><strong>Look at "What you notice."</strong> These clues are free and never lie, but on medium and hard targets some of them are random noise.</li>
+        <li><strong>Ask questions if you need to.</strong> Each one costs 20 points. A read is worth 100, minus 20 per question asked (never less than 40).</li>
+        <li><strong>Pick your approach.</strong> Choose the one that matches what the person really wants.</li>
+      </ol>
+      <h3>The 8 motives</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Motive</th><th>Clues look like</th><th>Approach that works</th></tr></thead>
+        <tbody>
+          <tr><td>Pride</td><td>Awards on display, titles, wanting credit</td><td>Feed their ego</td></tr>
+          <tr><td>Fear</td><td>New locks, watching the door, nervous habits</td><td>Offer protection</td></tr>
+          <tr><td>Money</td><td>Expensive things, listings, circled numbers</td><td>Offer a payoff</td></tr>
+          <tr><td>Loyalty</td><td>Family photos, protecting someone, saying "we"</td><td>Protect their person</td></tr>
+          <tr><td>Curiosity</td><td>Theories, unsolved cases, asking you questions</td><td>Trade a secret</td></tr>
+          <tr><td>Revenge</td><td>Scratched-out photos, grudges, a name they hate</td><td>Point them at an enemy</td></tr>
+          <tr><td>Guilt</td><td>Unsent apologies, hidden photos, avoiding the past</td><td>Offer a way to make it right</td></tr>
+          <tr><td>Love</td><td>A second coffee, a ring box, smiling at their phone</td><td>Play to their heart</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Liars</h3>
+      <p>Anyone after the first two targets might lie. A liar's answers pretend to be a different motive. There are two ways to catch them: a detail in the room that contradicts their act (a "money" person who never checks an open cash drawer), and one answer where they slip and show the real motive.</p>
+      <h3>Two-step targets</h3>
+      <p>Targets 4 and 7 are coworkers of the next person. Read the coworker correctly and they give you a real clue about the next target. Read them wrong and you go in with nothing.</p>
+      <h3>Difficulty</h3>
+      <p>Targets 1 to 3 are easy, with 3 real clues. Targets 4 to 7 are medium, with 2 real clues plus noise. Target 8 is hard, with 1 subtle clue hidden in noise.</p>
+      <h3>Losing and ranks</h3>
+      <p>Three wrong reads blows your cover and ends the game. Ranks: <strong>Untouchable</strong> 680+, <strong>Sharp reader</strong> 520+, <strong>Getting there</strong> 360+, <strong>Too trusting</strong> below that.</p>
+    </div>
+  </details>
+  <details class="rules" id="howCover" hidden>
+    <summary>How to play: Cover story</summary>
+    <div class="rbody">
+      <p><strong>Goal:</strong> Get through 9 questions from the detective with fewer than 5 suspicion marks.</p>
+      <h3>Setup</h3>
+      <ol>
+        <li>Pick an answer for each part of your alibi, or hit Random story.</li>
+        <li>Memorize it. It disappears once the interrogation starts.</li>
+      </ol>
+      <h3>Question types</h3>
+      <ul>
+        <li><strong>Direct:</strong> "Where were you?" Pick the answer from your story.</li>
+        <li><strong>Repeats:</strong> The same question asked again in different words. Your answer has to match.</li>
+        <li><strong>Checks:</strong> The detective states a detail, like "So Ray was with you the whole time?" Sometimes it's true and sometimes it's a trap. Say yes only if it matches your story.</li>
+        <li><strong>Evidence:</strong> A camera caught your car near the scene. Pick the explanation that fits how you said you got there. Never confess.</li>
+      </ul>
+      <h3>Suspicion marks</h3>
+      <div class="tw"><table>
+        <thead><tr><th>What you do</th><th>Marks</th></tr></thead>
+        <tbody>
+          <tr><td>Contradict your story</td><td>+2</td></tr>
+          <tr><td>Say "I don't remember"</td><td>+1</td></tr>
+          <tr><td>Hesitate (answer after 6 seconds)</td><td>+1</td></tr>
+          <tr><td>Freeze (no answer in 10 seconds)</td><td>+1</td></tr>
+          <tr><td>Confess</td><td>Caught instantly</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Tips</h3>
+      <p>Simple stories are easier to remember. When the detective states a detail, compare it to your story before you agree. Answer fast, but not without thinking.</p>
+    </div>
+  </details>
+
+  <div class="card" id="card"></div>
+
+  <section id="statsBox"></section>
+
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+  const take = (a, n) => shuffle(a).slice(0, n);
+  const strip = s => s.replace(/\.$/, '');
+
+  // ================= SAVED STATS =================
+  const DEF = { games:0, best:0, total:0, liarsFaced:0, liarsCaught:0, coverPlayed:0, coverSurvived:0, coverBest:null };
+  let stats = { ...DEF };
+  try { stats = { ...DEF, ...JSON.parse(localStorage.getItem('lvStats') || '{}') }; } catch (e) {}
+  const saveStats = () => { try { localStorage.setItem('lvStats', JSON.stringify(stats)); } catch (e) {} };
+  let resetArmed = false;
+  function renderStats() {
+    const avg = stats.games ? Math.round(stats.total / stats.games) : '–';
+    const catchRate = stats.liarsFaced ? Math.round(100 * stats.liarsCaught / stats.liarsFaced) + '%' : '–';
+    const cover = mode === 'cover';
+    $('statsBox').innerHTML = `<div class="statshead"><h3 style="margin:0">Your record</h3>
+      <button class="linkbtn" id="resetStats" type="button">${resetArmed ? 'Tap again to erase all stats' : 'Reset stats'}</button></div>
+      <div class="stats">${cover
+        ? `<div><small>Interrogations</small><b>${stats.coverPlayed}</b></div><div><small>Walked out</small><b>${stats.coverSurvived}</b></div>
+           <div><small>Escape rate</small><b>${stats.coverPlayed ? Math.round(100*stats.coverSurvived/stats.coverPlayed)+'%' : '–'}</b></div>
+           <div><small>Coolest escape</small><b>${stats.coverBest === null ? '–' : stats.coverBest + ' marks'}</b></div>`
+        : `<div><small>Games</small><b>${stats.games}</b></div><div><small>Best score</small><b>${stats.best || '–'}</b></div>
+           <div><small>Average</small><b>${avg}</b></div><div><small>Liars caught</small><b>${catchRate}</b></div>`}</div>`;
+    $('resetStats').addEventListener('click', () => {
+      if (!resetArmed) { resetArmed = true; renderStats(); return; }
+      stats = { ...DEF }; saveStats(); resetArmed = false; renderStats();
+    });
+  }
+
+  // ================= READ PEOPLE =================
+  const MOTIVES = {
+    pride:     { name:'pride',     label:'Feed their ego',        hint:'Only someone with their skill could do this.' },
+    fear:      { name:'fear',      label:'Offer protection',      hint:'Helping you makes them safer.' },
+    greed:     { name:'money',     label:'Offer a payoff',        hint:'Make it worth their while.' },
+    loyalty:   { name:'loyalty',   label:'Protect their person',  hint:'This keeps someone they care about out of trouble.' },
+    curiosity: { name:'curiosity', label:'Trade a secret',        hint:'Offer what you know in exchange.' },
+    revenge:   { name:'revenge',   label:'Point them at an enemy',hint:'This hurts the person who wronged them.' },
+    guilt:     { name:'guilt',     label:'Offer a way to make it right', hint:'This lets them fix what they did.' },
+    love:      { name:'love',      label:'Play to their heart',   hint:'This brings them closer to the one they love.' }
+  };
+  const MK = Object.keys(MOTIVES);
+  const QUESTIONS = [
+    ['care','What do you care about most?'],['risk','What would make you take a risk?'],
+    ['worry',"What's been bothering you lately?"],['trust','Who do you trust?'],['month','What would you do with a free month?']
+  ];
+  const FIRST = ['Marta','Dev','Rina','Tomas','Lena','Gil','Sofia','Arlo','Priya','Marcus','Ines','Theo','Yara','Owen','Celeste','Rafael','Nadia','Victor','June','Hassan','Bea','Silas','Mila','Darnell','Greta','Kenji','Lucia','Emmett','Zora','Felix'];
+  const LAST = ['Kell','Osei','Vaskova','Reyes','Hart','Brandt','Lind','Finch','Rao','Delacroix','Moreau','Quinn','Haddad','Sato','Novak','Ferreira','Okafor','Lindqvist','Pike','Abara','Castellano','Webb','Ivers','Mendoza','Thorne','Kowalski','Achebe','Marsh','Varga','Holt'];
+  const JOBS = [
+    ['Night archivist, City Records','Get the 2019 visitor logs out of the archive.'],['Parking garage guard',"See last Tuesday's level 3 camera footage."],
+    ['Accountant, Harbor Freight Co.','Get copies of the shell company invoices.'],['Auto body shop owner','Find out who brought in a gray sedan for a rush repaint.'],
+    ['Forensic lab tech','Get an early look at the sample 14 results.'],['Nightclub manager','Get the name on the private booth reservation.'],
+    ['City clerk','Get the sealed council meeting minutes.'],['Investigative journalist','Find out who their inside source is.'],
+    ['Hotel concierge','Find out which room the guest in the gray coat is staying in.'],['Bank teller',"Learn who's been depositing cash every Friday."],
+    ['Courier dispatcher','Get the pickup address for an unmarked package.'],['Building superintendent',"Get into apartment 6C's storage unit."],
+    ['Police desk sergeant','See the incident report that went missing.'],['Taxi dispatcher','Find out where a fare was dropped off at 2 a.m.'],
+    ['Museum security chief','See the alarm log from the night of the break-in.'],['Pawn shop owner','Find out who sold a gold watch here last week.']
+  ];
+  const OBS = {
+    pride:{strong:['A framed award hung where visitors will see it, not where they would.','Every label in the room is rewritten in the same neat handwriting.','A newspaper clipping with their quote in it, laminated and pinned up.','A nameplate polished to a shine.','A crumpled memo announcing someone else\'s promotion, in the trash.'],
+      subtle:['They correct how you pronounce a technical term.','They mention their years of experience before you ask.','They straighten their badge so the title shows.']},
+    fear:{strong:['A second lock on the door, still shiny and new.','They look up every time the door opens.','A panic button freshly installed under the desk.','They always sit facing the entrance.','Blinds pulled shut in the middle of the day.'],
+      subtle:['Their phone buzzes face-down. They don\'t touch it.','They lower their voice when you mention names.','They check the hallway before closing the door.']},
+    greed:{strong:['A luxury watch that costs more than a month of their salary.','A printed real estate listing tucked under the keyboard.','A calculator with a big number circled in pen.','A dog-eared brochure for an expensive car.','A stock ticker open on a second monitor.'],
+      subtle:['They ask what your coat cost.','They glance at your shoes, then your watch.','They mention a "side project" that pays better.']},
+    loyalty:{strong:['A photo of a young relative taped next to the screen.','A second mug on the desk with someone else\'s name on it.','A kid\'s drawing pinned up with care.','They take a call, say "I\'ll handle it, don\'t worry," and hang up fast.','A team photo with one face circled.'],
+      subtle:['They glance toward a back room when you mention trouble.','They say "we" when you ask about them.','They get defensive when you mention their coworkers.']},
+    curiosity:{strong:['A whiteboard covered in crossed-out theories.','A stack of true crime books full of sticky notes.','Three open browser tabs about the same unsolved case.','A notebook of questions, most with no answers yet.','Puzzle boxes lined up on the shelf, all opened.'],
+      subtle:['They ask you a question before you can ask one.','Their eyes go to the folder in your hand.','They lean in when you mention something unexplained.']},
+    revenge:{strong:['A photo of a former boss with the face scratched out.','A folder labeled with one person\'s name, thick with printouts.','A lawsuit letter, read so many times it\'s soft at the folds.','A calendar with one date circled in red and the words "Never forget."','An article about a rival\'s success, pinned up like a target.'],
+      subtle:['Their jaw tightens when a certain name comes up.','They smile a little too long when you mention someone\'s trouble.','They ask who else you\'ve talked to, and remember every name.']},
+    guilt:{strong:['A sympathy card, written but never sent.','An old newspaper article about an accident, folded small and kept.','Donation receipts to the same charity, one every month.','A photo turned face-down on the desk.','A letter that starts "I\'m sorry" and stops there.'],
+      subtle:['They can\'t hold eye contact when you mention the past.','They apologize for things that aren\'t their fault.','They over-explain small details nobody asked about.']},
+    love:{strong:['A second coffee on the desk, made exactly the way someone else likes it.','A ring box tucked behind the monitor.','A photo booth strip of two people laughing.','A sticky note with a heart and a time: "Tonight, 8."','Flowers on the desk, with the card turned away.'],
+      subtle:['They check their phone and smile at it.','They say one name softer than the others.','They ask if you know someone who works upstairs.']}
+  };
+  const CONTRA = {
+    greed:['The cash drawer is open and they never check it.','A bonus check sits uncashed on the desk, weeks old.','They wave off your offer to pay for coffee without a thought.'],
+    pride:['Their award is shoved in a drawer, face-down.','A coworker takes credit for their work in front of you. They don\'t react.'],
+    loyalty:['They badmouth their boss the second the boss walks out.','A team birthday card sits on their desk, unsigned.'],
+    curiosity:['They don\'t take a single note while you talk.','A case file on their desk is still sealed.'],
+    fear:['They leave the door wide open behind them.','Their keys and wallet sit out on the counter, unattended.'],
+    revenge:['They wave off their old rival\'s name like it means nothing.','A friendly holiday card from their supposed enemy sits on the desk.'],
+    guilt:['They laugh while telling a story about someone getting hurt.','They blame everyone else for every problem in the room.'],
+    love:['They call dating "a waste of time" and mean it.','A wedding invitation sits in the trash, unopened.']
+  };
+  const NOISE = ['A half-finished coffee, gone cold.','A dying plant on the windowsill.','A calendar still on last month.','A radio playing old jazz quietly.','Paperwork sorted into neat stacks.','A jacket draped over the chair.','Sticky notes with phone numbers, no names.','A clock that runs five minutes fast.','A bag of sunflower seeds, half empty.','Rain-soaked boots by the door.','A spare umbrella in the corner.','A cracked phone screen.'];
+  const ANS = {
+    pride:{care:['Nobody notices, but this place only runs because I know where everything is.','Doing it right. Most people here don\'t know the difference.','Being the best at this. I am, by the way.'],
+      risk:['If someone needed what only I can do.','If it proved I was right all along.','For something they\'ll still talk about when I\'m gone.'],
+      worry:['They promoted someone over me. I trained them.','They want to replace me with software. Eleven years, and software.','Nobody gives credit anymore. They just take it.'],
+      trust:['Myself. Everyone else just asks me.','My own work. It speaks for itself.','Hardly anyone. Most people here couldn\'t do my job.'],
+      month:['Write the guide properly. With my name on it.','Finally get the recognition I\'m owed.','Write a book about how this place really works.']},
+    fear:{care:['Getting home. Every night. That\'s it.','Keeping my head down.','Staying out of whatever\'s going on around here.'],
+      risk:['I don\'t. Not anymore.','Only if it made me safer.','Nothing\'s worth it right now.'],
+      worry:['Same car keeps parking outside. Different hours every time.','I got a call last week. Nobody on the line. Just breathing.','People keep asking questions about me. I don\'t know who sent them.'],
+      trust:['The cameras. They don\'t lie.','The lock on my door.','Nobody. That\'s how you stay safe.'],
+      month:['Somewhere far away. Somewhere quiet.','Leave town until things calm down.','Stay home with the doors locked, honestly.']},
+    greed:{care:['Numbers that add up in my favor.','Getting paid what I\'m worth. Which is more.','My future. And my future isn\'t cheap.'],
+      risk:['Depends on the upside, doesn\'t it?','For the right number, sure.','If the payout beats the downside.'],
+      worry:['The bonus pool got cut. Again.','Rent\'s going up and my raise isn\'t.','Watching everyone else get rich first.'],
+      trust:['Contracts. Signed ones.','Cash. It never changes its mind.','Whoever\'s paying.'],
+      month:['Look at property. Maybe make an offer.','Work my side deals full time.','Figure out how to never work for anyone else again.']},
+    loyalty:{care:['My people. This place is family.','Making sure nobody I care about gets hurt.','The people who\'ve got my back.'],
+      risk:['For family? Anything.','If someone I care about needed it.','To protect one of mine, without thinking.'],
+      worry:['The kid\'s been running with a bad crowd. I keep him close.','Someone I care about made a mistake. I\'m fixing it quietly.','My sister\'s in over her head and won\'t tell me how deep.'],
+      trust:['My family. Nobody else.','The people who stuck around when it got hard.','My crew. We look out for each other.'],
+      month:['Spend it with my family.','Help my nephew get on his feet.','Get everyone I care about somewhere safe.']},
+    curiosity:{care:['Figuring out why things happen. Not just what.','Questions nobody else is asking.','The truth. The weird parts especially.'],
+      risk:['If the answer\'s interesting enough? Probably too fast.','To find out how it really happened.','For a good mystery? Usually.'],
+      worry:['That I\'ll never find out what really happened.','Something here doesn\'t add up, and nobody else seems to care.','There\'s a file I\'m not allowed to see. It\'s driving me crazy.'],
+      trust:['Evidence. People come second.','Facts. They don\'t have agendas.','Whoever tells me something I don\'t know.'],
+      month:['Read every file on this case. Twice.','Chase a theory I\'ve had for years.','Finally solve something that\'s been bugging me.']},
+    revenge:{care:['Making sure people get what they deserve.','Not letting anyone walk over me twice.','Evening the score.'],
+      risk:['If it meant someone finally paid for what they did.','To see a certain person fall? Without blinking.','For justice. My kind.'],
+      worry:['The guy who ruined me just got promoted.','That they\'ll get away with it. Again.','Seeing someone who wronged me doing better than ever.'],
+      trust:['People who have the same enemies I do.','Nobody who\'s ever been friendly with my old boss.','Myself. Everyone else forgives too easily.'],
+      month:['Dig up everything on someone who deserves it.','Make one person\'s life very complicated.','Finally settle an old score.']},
+    guilt:{care:['Doing the right thing. Finally.','Fixing what I can.','Being someone I can live with.'],
+      risk:['If it made up for something.','To undo a mistake? Anything.','If it meant someone got the truth they deserve.'],
+      worry:['Something I should have said a long time ago.','Someone got hurt because I stayed quiet.','I can\'t sleep. Haven\'t for a while.'],
+      trust:['People who don\'t know what I did.','The ones who forgave me. There aren\'t many.','Honestly? I don\'t trust myself.'],
+      month:['Visit someone I owe an apology.','Volunteer somewhere I can actually help.','Set something right that I let go wrong.']},
+    love:{care:['Someone. That\'s all I\'ll say.','Making someone proud of me.','Building a life with the right person.'],
+      risk:['For the person I love? Anything.','If it meant being with them.','To give someone the life they deserve.'],
+      worry:['That I\'ll lose them if things get worse here.','Their family doesn\'t think I\'m good enough.','I\'m about to ask a big question and I\'m not ready.'],
+      trust:['The person I\'m going home to.','Her. Just her.','Him. He\'s the only one who gets me.'],
+      month:['Take them somewhere they\'ve always wanted to go.','Plan the perfect proposal.','Spend every day of it with them.']}
+  };
+  const SLIP = {
+    pride:['They gave the promotion to someone I trained. ...Not that it matters to me.','I\'m fine. People should just know who really does the work here.'],
+    fear:['Nothing. ...Why? Has someone been asking about me?','Who sent you? ...Sorry. Long week.'],
+    greed:['That someone beats me to it. ...and gets the money.','Honestly? What\'s in it for me? I mean, for everyone.'],
+    loyalty:['Leave my nephew out of this. ...I mean, it\'s nothing.','I don\'t care what happens to me. Just keep my family out of it.'],
+    curiosity:['Wait, what did you find? ...Not that I care.','Is that the sealed file? ...Never mind. Not my business.'],
+    revenge:['Nothing bothers me. ...Except that he got the promotion and I got fired.','I\'ve moved on. Completely. ...Did you say you know him?'],
+    guilt:['I\'m fine. ...I just keep thinking about that night.','Nothing. ...Did they tell you what happened? It wasn\'t supposed to go like that.'],
+    love:['Nothing. ...Unless this is about her. Is this about her?','Work\'s fine. ...Sorry, my phone. It\'s probably him.']
+  };
+
+  const TOTAL = 8;
+  const LEVELS = ['easy','easy','easy','medium','medium','medium','medium','hard'];
+  const CHAINS = [[3,4],[6,7]]; // [informant, target]
+  let people, idx, score, blown, asked, answered, done, recorded;
+
+  function makePerson(i, name, job, liar) {
+    const motive = pick(MK), level = LEVELS[i], O = OBS[motive];
+    let tells, noise;
+    if (level === 'easy') { tells = take(O.strong, 3); noise = 0; }
+    else if (level === 'medium') { tells = [...take(O.strong, 1), ...take(O.subtle, 1)]; noise = 1; }
+    else { tells = take(O.subtle, 1); noise = 2; }
+    const p = { name, role: job[0], goal: job[1], motive, level, tells, a: {} };
+    const obs = [...tells, ...take(NOISE, noise)];
+    const voice = liar ? pick(MK.filter(m => m !== motive)) : motive;
+    QUESTIONS.forEach(([k]) => { p.a[k] = pick(ANS[voice][k]); });
+    if (liar) {
+      p.claims = voice; p.contra = pick(CONTRA[voice]); obs.push(p.contra);
+      p.slipQ = pick(['worry','worry','care','trust','month']); p.a[p.slipQ] = pick(SLIP[motive]);
+    }
+    p.obs = shuffle(obs);
+    return p;
+  }
+
+  function newRead() {
+    const lasts = take(LAST, TOTAL), names = take(FIRST, TOTAL).map((f, i) => f + ' ' + lasts[i]);
+    const jobs = take(JOBS, TOTAL);
+    const liarSlots = new Set(take([2,3,4,5,6,7], 2));
+    [2,3,4,5,6,7].forEach(i => { if (Math.random() < 0.25) liarSlots.add(i); });
+    people = [];
+    for (let i = 0; i < TOTAL; i++) people[i] = null;
+    // targets first so informants can reference them
+    for (let i = 0; i < TOTAL; i++) if (!CHAINS.some(c => c[0] === i)) people[i] = makePerson(i, names[i], jobs[i], liarSlots.has(i));
+    CHAINS.forEach(([inf, tgt]) => {
+      const t = people[tgt], first = t.name.split(' ')[0];
+      const p = makePerson(inf, names[inf], [`Works with ${first} · ${jobs[inf][0]}`, `Get them to tell you what makes ${t.name} tick.`], liarSlots.has(inf));
+      p.chainTo = tgt; t.chainFrom = inf; p.step = 1; t.step = 2;
+      people[inf] = p;
+    });
+    idx = 0; score = 0; blown = 0; recorded = false;
+    startCase();
+  }
+  function startCase() { asked = []; answered = false; done = false; renderRead(); }
+  const worth = () => Math.max(40, 100 - 20 * asked.length);
+
+  function ask(k) { if (answered || asked.includes(k)) return; asked.push(k); renderRead(); }
+  function choose(m) {
+    if (answered) return;
+    answered = true;
+    const c = people[idx]; c.pick = m; const right = m === c.motive;
+    if (right) score += worth(); else blown++;
+    if (c.chainTo !== undefined) {
+      const t = people[c.chainTo];
+      if (right) {
+        const extra = OBS[t.motive].strong.filter(x => !t.obs.includes(x));
+        t.intel = { from: c.name, clue: pick(extra.length ? extra : OBS[t.motive].strong) };
+      } else t.intelFail = c.name;
+    }
+    renderRead();
+  }
+  function nextCase() {
+    if (blown >= 3 || idx >= TOTAL - 1) { done = true; finishRead(); renderRead(); return; }
+    idx++; startCase();
+    $('card').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  }
+  function finishRead() {
+    if (recorded) return; recorded = true;
+    const seen = people.slice(0, idx + 1);
+    stats.games++; stats.total += score; stats.best = Math.max(stats.best, score);
+    seen.filter(p => p.claims && p.pick !== undefined).forEach(p => { stats.liarsFaced++; if (p.pick === p.motive) stats.liarsCaught++; });
+    saveStats(); renderStats();
+  }
+
+  function debrief(c) {
+    let t = `Real motive: <strong>${MOTIVES[c.motive].name}</strong>. The tell${c.tells.length > 1 ? 's' : ''}: ${c.tells.map(x => `“${strip(x)}”`).join(', ')}.`;
+    if (c.claims) {
+      const qText = QUESTIONS.find(q => q[0] === c.slipQ)[1];
+      t = `<span class="liar">Liar</span>They acted like it was about ${MOTIVES[c.claims].name}, but this gave it away: “${strip(c.contra)}.” ` +
+        (asked.includes(c.slipQ) ? `They also slipped when you asked “${qText}” ` : `If you'd asked “${qText}”, they would have slipped. `) + t;
+    }
+    if (c.level === 'hard') t += ' Everything else in the room was noise.';
+    if (c.chainTo !== undefined) t += c.pick === c.motive ? ` They told you something about ${people[c.chainTo].name}. You'll see it on the next target.` : ` No intel on ${people[c.chainTo].name}. You're going in blind.`;
+    return t;
+  }
+
+  function renderRead() {
+    $('caseNo').textContent = `${idx + 1} / ${TOTAL}`;
+    $('score').textContent = score;
+    $('pips').innerHTML = [0,1,2].map(i => `<i class="${i < blown ? 'on' : ''}"></i>`).join('');
+    const card = $('card');
+    if (done) { card.className = 'card end'; card.innerHTML = endRead(); $('again').addEventListener('click', newRead); return; }
+    card.className = 'card';
+    const c = people[idx];
+    const talk = asked.map(k => `<div class="line"><span class="you">You: ${QUESTIONS.find(q => q[0] === k)[1]}</span><span class="them">“${c.a[k]}”</span></div>`).join('');
+    const lvl = { easy:'Easy read', medium:'Medium read · some clues are noise', hard:'Hard read · one real tell' }[c.level];
+    const step = c.step ? `<span class="step">Step ${c.step} of 2 · </span>` : '';
+    let intel = '';
+    if (c.intel) intel = `<div class="intel"><b>Intel from ${c.intel.from}</b>Something they've noticed about ${c.name.split(' ')[0]}: “${strip(c.intel.clue)}.” This one is real.</div>`;
+    else if (c.intelFail) intel = `<div class="intel fail"><b>No intel</b>${c.intelFail} didn't talk. You're reading this one cold.</div>`;
+    let h = `<div class="who"><div><p class="tag">${step}${lvl}</p><h2>${c.name}</h2></div><span class="role">${c.role}</span></div>
+      <div class="goal"><p class="tag">You need to</p><p>${c.goal}</p></div>
+      ${intel}
+      <div><h3>What you notice</h3><ul class="obs">${c.obs.map(o => `<li>${o}</li>`).join('')}</ul></div>
+      <div><h3>Ask a question <span style="color:var(--muted)">· −20 each</span></h3>
+        <div class="qs">${QUESTIONS.map(([k, t]) => `<button class="q" type="button" data-q="${k}" ${answered || asked.includes(k) ? 'disabled' : ''}>${t}</button>`).join('')}</div>
+        ${asked.length ? '' : '<p class="qhint">Or skip questions and make your move from the clues alone for the full 100.</p>'}
+      </div>
+      ${talk ? `<div class="talk">${talk}</div>` : ''}
+      <div><h3>Your approach · worth ${worth()}</h3>
+        <div class="aps">${MK.map(k => {
+          const m = MOTIVES[k], cls = answered ? (k === c.motive ? 'right' : k === c.pick ? 'wrong' : '') : '';
+          return `<button class="ap ${cls}" type="button" data-m="${k}" ${answered ? 'disabled' : ''}><b>${m.label}</b><span>${m.hint}</span></button>`; }).join('')}</div>
+      </div>`;
+    if (answered) {
+      const right = c.pick === c.motive, last = blown >= 3 || idx >= TOTAL - 1;
+      h += `<div class="debrief" aria-live="polite">
+        <div class="head ${right ? 'win' : 'lose'}">${right ? `Got it. +${worth()}` : 'They shut you out. Cover slipping.'}</div>
+        <p>${debrief(c)}</p>
+        <button class="btn" id="next" type="button">${last ? 'See results' : 'Next target'}</button></div>`;
+    }
+    card.innerHTML = h;
+    card.querySelectorAll('[data-q]').forEach(b => b.addEventListener('click', () => ask(b.dataset.q)));
+    card.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => choose(b.dataset.m)));
+    if (answered) { $('next').addEventListener('click', nextCase); $('next').focus({ preventScroll: true }); }
+  }
+
+  function endRead() {
+    const max = TOTAL * 100, caught = blown >= 3, pct = score / max;
+    const seen = people.slice(0, idx + 1).filter(p => p.claims);
+    const got = seen.filter(p => p.pick === p.motive).length;
+    const rank = caught ? 'Your cover is blown.' : pct >= .85 ? 'Untouchable.' : pct >= .65 ? 'Sharp reader.' : pct >= .45 ? 'Getting there.' : 'Too trusting.';
+    const note = caught ? 'Three wrong reads and they figured out what you were doing. Trust the room over the words, and look for the one detail that doesn\'t fit.'
+      : pct >= .85 ? 'You read people from small details and saw through the lies. That is the real skill.'
+      : pct >= .65 ? 'Good reads. Try trusting the clues more and asking fewer questions.'
+      : 'You are relying on what people say. Their surroundings tell you more than their words.';
+    const best = score >= stats.best && score > 0 ? ' New best score.' : '';
+    return `<p class="tag">Final report · caught ${got} of ${seen.length} liar${seen.length === 1 ? '' : 's'}</p><div class="big">${score}<span style="font-size:1.2rem;color:var(--muted)"> / ${max}</span></div>
+      <h2>${rank}</h2><p>${note}${best}</p><button class="btn" id="again" type="button">Play again with new people</button>`;
+  }
+
+  // ================= COVER STORY =================
+  const FIELDS = {
+    location: { label:'Where you were', values:['the Marlow movie theater',"my friend Dee's apartment",'the all-night diner on 5th'],
+      ask:['Where were you last night around 11?','Remind me where you spent the evening.'], say: v => `At ${v}.`,
+      check: v => `A witness puts you at ${v} last night. That right?` },
+    companion: { label:'Who you were with', values:['nobody','my cousin Ray','Sam from work'],
+      ask:['Who were you with?','Who can back up your story?'], say: v => v === 'nobody' ? 'Nobody. I was alone.' : `I was with ${v}.`,
+      check: v => v === 'nobody' ? 'So you were on your own all night?' : `So ${v} was with you the whole time?` },
+    travel: { label:'How you got there', values:['took the bus','drove my car','walked'],
+      ask:['How did you get there?','Remind me how you got around last night.'], say: v => `I ${v}.`,
+      check: v => `And you ${v.replace('my car','yourself')} there, correct?` },
+    time: { label:'When you got home', values:['11:30','midnight','12:30'],
+      ask:['What time did you get home?','When did you walk through your door?'], say: v => v === 'midnight' ? 'Around midnight.' : `Around ${v}.`,
+      check: v => `You got home around ${v}. Yes?` }
+  };
+  const FK = Object.keys(FIELDS);
+  const TLIMIT = 10, SLOW = 6, MAXSUS = 5;
+  let cv; // cover state
+
+  function newCover() {
+    cv = { phase:'build', story:{}, qs:[], qi:0, sus:0, log:[], timer:null, start:0, locked:false, recorded:false };
+    renderCover();
+  }
+  function buildQuestions() {
+    const qs = [];
+    FK.forEach(f => qs.push({ type:'direct', f, text: FIELDS[f].ask[0] }));
+    take(FK, 2).forEach(f => qs.push({ type:'direct', f, text: FIELDS[f].ask[1], repeat:true }));
+    take(FK, 2).forEach(f => {
+      const truth = Math.random() < 0.5;
+      const v = truth ? cv.story[f] : pick(FIELDS[f].values.filter(x => x !== cv.story[f]));
+      qs.push({ type:'check', f, v, text: FIELDS[f].check(v) });
+    });
+    const order = shuffle(qs);
+    order.splice(5 + Math.floor(Math.random() * 2), 0, { type:'evidence', text:'A traffic camera caught your car two blocks from the warehouse at 10:40. Explain that.' });
+    return order;
+  }
+  function optionsFor(q) {
+    if (q.type === 'direct') return [...FIELDS[q.f].values.map(v => ({ t: FIELDS[q.f].say(v), v })), { t:"I don't remember.", v:'?' }];
+    if (q.type === 'check') return [{ t:"Yes, that's right.", v:'yes' }, { t:"No, that's not right.", v:'no' }, { t:"I don't remember.", v:'?' }];
+    return [{ t:`I drove past there on my way to ${cv.story.location}.`, v:'drove' },
+            { t:"I didn't drive last night. Someone else must have had my car.", v:'nodrive' },
+            { t:'Fine. I was there.', v:'confess' }];
+  }
+  function judge(q, v) {
+    if (v === '?') return { mark:1, kind:'meh', line: pick(['Convenient.','You don\'t remember? Interesting.','Hm. Your memory comes and goes.']) };
+    if (q.type === 'direct') return v === cv.story[q.f] ? { mark:0, kind:'ok', line: pick(['Noted.','Hm.','Okay.','Go on.']) }
+      : { mark:2, kind:'bad', line: q.repeat || cv.log.some(l => l.q.f === q.f) ? "That's not what you told me before." : "That's not what your story should be, is it?" };
+    if (q.type === 'check') { const truth = q.v === cv.story[q.f]; const ok = (v === 'yes') === truth;
+      return ok ? { mark:0, kind:'ok', line: truth ? 'Good.' : pick(['Just checking.','My mistake.','Huh. Must have misheard.']) }
+        : { mark:2, kind:'bad', line: truth ? "You just contradicted your own story." : "Funny. That's not what you said earlier." }; }
+    if (v === 'confess') return { mark:99, kind:'bad', line:'Thank you. That\'s all I needed.' };
+    const drove = cv.story.travel === 'drove my car';
+    const ok = (v === 'drove') === drove;
+    return ok ? { mark:0, kind:'ok', line:'Hm. That checks out.' } : { mark:2, kind:'bad', line: drove ? "You told me you drove. So who had your car?" : "You said you didn't drive. Now you did?" };
+  }
+
+  function answer(v, timedOut) {
+    if (cv.locked) return;
+    cv.locked = true; clearInterval(cv.timer);
+    const q = cv.qs[cv.qi], secs = (performance.now() - cv.start) / 1000;
+    let r = timedOut ? { mark:1, kind:'meh', line:'You froze. The detective writes something down.' } : judge(q, v);
+    let slow = !timedOut && secs > SLOW && r.mark < 99;
+    const add = r.mark + (slow ? 1 : 0);
+    cv.sus = r.mark >= 99 ? MAXSUS : Math.min(MAXSUS, cv.sus + add);
+    cv.log.push({ q, v: timedOut ? 'froze' : v, r, slow });
+    cv.react = { line: r.line + (slow && r.mark === 0 ? ' You took a while to answer.' : slow ? ' And you hesitated.' : ''), kind: r.kind === 'ok' && slow ? 'meh' : r.kind, chosen: v };
+    renderCover();
+    setTimeout(() => {
+      cv.react = null; cv.locked = false;
+      if (cv.sus >= MAXSUS || cv.qi >= cv.qs.length - 1) { cv.phase = 'end'; finishCover(); renderCover(); return; }
+      cv.qi++; startQuestion();
+    }, 1700);
+  }
+  function startQuestion() {
+    cv.start = performance.now(); renderCover();
+    clearInterval(cv.timer);
+    cv.timer = setInterval(() => {
+      const left = TLIMIT - (performance.now() - cv.start) / 1000;
+      const bar = $('tbar'); if (bar) { bar.style.width = Math.max(0, left / TLIMIT * 100) + '%'; bar.parentElement.classList.toggle('late', left < TLIMIT - SLOW); }
+      if (left <= 0) answer(null, true);
+    }, 100);
+  }
+  function finishCover() {
+    if (cv.recorded) return; cv.recorded = true; clearInterval(cv.timer);
+    stats.coverPlayed++;
+    if (cv.sus < MAXSUS) { stats.coverSurvived++; stats.coverBest = stats.coverBest === null ? cv.sus : Math.min(stats.coverBest, cv.sus); }
+    saveStats(); renderStats();
+  }
+
+  function renderCover() {
+    const card = $('card'); card.className = 'card';
+    if (cv.phase === 'build') {
+      const ready = FK.every(f => cv.story[f]);
+      card.innerHTML = `<div><p class="tag">Cover story · you are the suspect</p><h2 style="font-family:var(--f-display);font-weight:400;font-size:clamp(1.5rem,5vw,2rem);margin:4px 0 0">Last night, someone broke into the warehouse on Pier 9. You were there.</h2></div>
+        <p style="margin:0;color:var(--muted)">A detective wants to talk. Build your alibi before you walk in. Pick a believable answer for each part.</p>
+        ${FK.map(f => `<div class="field"><h3>${FIELDS[f].label}</h3><div class="chips">${FIELDS[f].values.map(v =>
+          `<button class="chip" type="button" data-f="${f}" data-v="${v}" aria-pressed="${cv.story[f] === v}">${v === 'nobody' ? 'Alone' : v[0].toUpperCase() + v.slice(1)}</button>`).join('')}</div></div>`).join('')}
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="lock" type="button" ${ready ? '' : 'disabled style="opacity:.4;cursor:not-allowed"'}>Lock in my story</button>
+        <button class="btn" id="rand" type="button" style="background:var(--bg);color:var(--ink);border:1px solid var(--line)">Random story</button></div>`;
+      card.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { cv.story[b.dataset.f] = b.dataset.v; renderCover(); }));
+      $('rand').addEventListener('click', () => { FK.forEach(f => cv.story[f] = pick(FIELDS[f].values)); renderCover(); });
+      $('lock').addEventListener('click', () => { if (ready) { cv.phase = 'memorize'; renderCover(); } });
+      return;
+    }
+    if (cv.phase === 'memorize') {
+      card.innerHTML = `<div><p class="tag">Memorize this</p><h2 style="font-family:var(--f-display);font-weight:400;font-size:1.8rem;margin:4px 0 0">Your story</h2></div>
+        <div class="story">${FK.map(f => `<div><small>${FIELDS[f].label}</small><b>${FIELDS[f].say(cv.story[f])}</b></div>`).join('')}</div>
+        <p style="margin:0;color:var(--muted)">Once the interrogation starts, this disappears. You get ${TLIMIT} seconds per question, and taking more than ${SLOW} counts as hesitating. Some questions repeat in different words. Some contain false details to trap you.</p>
+        <button class="btn" id="go" type="button">Start the interrogation</button>`;
+      $('go').addEventListener('click', () => { cv.qs = buildQuestions(); cv.qi = 0; cv.phase = 'ask'; startQuestion(); $('card').scrollIntoView({ block: 'start' }); });
+      return;
+    }
+    if (cv.phase === 'ask') {
+      const q = cv.qs[cv.qi], opts = optionsFor(q), rc = cv.react;
+      card.innerHTML = `<div class="who"><p class="tag">Question ${cv.qi + 1} of ${cv.qs.length}${q.type === 'evidence' ? ' · new evidence' : ''}</p>
+          <div class="sus" aria-label="Suspicion ${cv.sus} of ${MAXSUS}"><span class="tag" style="margin-right:4px">Suspicion</span>${Array.from({length:MAXSUS}, (_, i) => `<i class="${i < cv.sus ? 'on' : ''}"></i>`).join('')}</div></div>
+        <div class="timer"><i id="tbar" style="width:100%"></i></div>
+        <div class="qbox">“${q.text}”</div>
+        <div class="opts">${opts.map(o => `<button class="opt ${rc && rc.chosen === o.v ? 'chosen ' + (rc.kind === 'bad' ? 'bad' : 'ok') : ''}" type="button" data-v="${o.v}" ${rc ? 'disabled' : ''}>${o.t}</button>`).join('')}</div>
+        <p class="react ${rc ? (rc.kind === 'bad' ? 'bad' : 'ok') : ''}" aria-live="polite">${rc ? rc.line : ''}</p>`;
+      if (rc) { const bar = $('tbar'); bar.style.width = '0%'; }
+      card.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => answer(b.dataset.v)));
+      return;
+    }
+    // end
+    const survived = cv.sus < MAXSUS;
+    const verdict = !survived ? 'You\'re under arrest.' : cv.sus === 0 ? 'Not a crack in it.' : cv.sus <= 2 ? 'You walked out.' : 'You walked out. Barely.';
+    const note = !survived ? 'Your story fell apart. Rebuild it simpler, and remember: when the detective states a detail, check it against what you actually said.'
+      : cv.sus === 0 ? 'Perfect consistency, no hesitation. The detective has nothing on you.'
+      : 'You got out, but the detective noticed things. Look at where the marks came from.';
+    const rows = cv.log.map(l => {
+      const tag = l.r.kind === 'bad' ? ['bad', l.r.mark >= 99 ? 'Confessed' : 'Contradiction'] : l.r.kind === 'meh' ? ['meh', l.v === 'froze' ? 'Froze' : 'Forgot'] : l.slow ? ['meh', 'Hesitated'] : ['ok', 'Clean'];
+      const said = l.v === 'froze' ? '(no answer)' : optionsFor(l.q).find(o => o.v === l.v).t;
+      return `<li><span class="res ${tag[0]}">${tag[1]}</span><div>“${l.q.text}”<span class="d">You said: ${said}</span></div></li>`;
+    }).join('');
+    card.className = 'card end';
+    card.innerHTML = `<p class="tag">Interrogation over · ${cv.sus} suspicion mark${cv.sus === 1 ? '' : 's'}</p><h2>${verdict}</h2><p>${note}</p>
+      <div class="story">${FK.map(f => `<div><small>${FIELDS[f].label}</small><b>${FIELDS[f].say(cv.story[f])}</b></div>`).join('')}</div>
+      <ul class="review">${rows}</ul>
+      <button class="btn" id="again2" type="button">New interrogation</button>`;
+    $('again2').addEventListener('click', newCover);
+  }
+
+  // ================= MODES =================
+  let mode = 'read';
+  function setMode(m) {
+    if (cv && cv.timer) clearInterval(cv.timer);
+    mode = m;
+    $('tabRead').setAttribute('aria-selected', m === 'read'); $('tabCover').setAttribute('aria-selected', m === 'cover');
+    $('readBar').hidden = m !== 'read'; $('howRead').hidden = m !== 'read'; $('howCover').hidden = m !== 'cover';
+    $('lede').textContent = m === 'read'
+      ? 'Every person wants something. Read the clues, figure out what drives them, then use it to get what you need. Anyone might lie to you about what they want.'
+      : 'Now you are the one lying. Build an alibi, memorize it, and keep it straight under pressure while a detective tries to trip you up.';
+    resetArmed = false;
+    if (m === 'read') { if (!people) newRead(); else renderRead(); } else newCover();
+    renderStats();
+  }
+  ['howRead','howCover'].forEach(id => {
+    let seen = false; try { seen = localStorage.getItem('lvSeen_' + id) === '1'; } catch (e) {}
+    if (!seen) $(id).open = true;
+    $(id).addEventListener('toggle', () => { if (!$(id).open) { try { localStorage.setItem('lvSeen_' + id, '1'); } catch (e) {} } });
+  });
+  $('tabRead').addEventListener('click', () => setMode('read'));
+  $('tabCover').addEventListener('click', () => setMode('cover'));
+  setMode('read');
+})();
+</script>
+</body>
+</html>
